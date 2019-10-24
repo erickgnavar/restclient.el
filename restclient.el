@@ -186,8 +186,49 @@
     ad-do-it))
 (ad-activate 'url-http-user-agent-string)
 
+(defvar restclient-saved-request nil)
+
+
+(setq foo 1)
+
+(setq values `(("method" . ,foo)))
+
+(make-symbol request)
+
+
+(cdr (assoc "method" values))
+
+(alist-get (make-symbol "method") trees)
+
+(defun restclient-save-request-for-retry (method url headers entity &rest args)
+  "Save METHOD URL, HEADERS, ENTITY and ARGS in a variable to be used for retrying the request."
+  (setq restclient-saved-request `(("method" . ,method)
+                                   ("url" . ,url)
+                                   ("headers" . ,headers)
+                                   ("entity" . ,entity)
+                                   ("args" . ,args))))
+
+(cdr (assoc "method" restclient-saved-request))
+
+(defun restclient-retry-request ()
+  "Retry the latest request."
+  (interactive)
+  (let* ((method (cdr (assoc "method" restclient-saved-request)))
+         (url (cdr (assoc "url" restclient-saved-request)))
+         (headers (cdr (assoc "headers" restclient-saved-request)))
+         (entity (cdr (assoc "entity" restclient-saved-request)))
+         (args (cdr (assoc "args" restclient-saved-request))))
+    (restclient-http-do method url headers entity args)))
+
+restclient-saved-request
+
+(cdr (assoc "args" restclient-saved-request))
+
+(define-key restclient-response-mode-map (kbd "C-c C-c") 'restclient-retry-request)
+
 (defun restclient-http-do (method url headers entity &rest handle-args)
   "Send ENTITY and HEADERS to URL as a METHOD request."
+  (restclient-save-request-for-retry method url headers entity handle-args)
   (if restclient-log-request
       (message "HTTP %s %s Headers:[%s] Body:[%s]" method url headers entity))
   (let ((url-request-method (encode-coding-string method 'us-ascii))
